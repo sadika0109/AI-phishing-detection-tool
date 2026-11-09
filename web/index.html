@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phishing URL Awareness Checker</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --border: #30363d;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-hover: #1f6feb;
+      --warning: #f0883e;
+      --danger: #f85149;
+      --success: #3fb950;
+      --font-mono: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      padding: 2rem 1rem;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 780px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.2rem 0.6rem;
+      border-radius: 20px;
+      background: rgba(88, 166, 255, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(88, 166, 255, 0.3);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      color: #fff;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+      color: #fff;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background-color: #0b0e14;
+      color: #fff;
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
+    }
+
+    button {
+      padding: 0.75rem 1.25rem;
+      background-color: var(--accent-hover);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background-color: #388bfd;
+    }
+
+    .presets {
+      margin-top: 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .presets-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .preset-btn {
+      background: #21262d;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      padding: 0.3rem 0.6rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .preset-btn:hover {
+      background: #30363d;
+      color: #fff;
+    }
+
+    .results-box {
+      margin-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      padding-top: 1.5rem;
+      display: none;
+    }
+
+    .results-box.active {
+      display: block;
+    }
+
+    .summary-banner {
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .summary-warning {
+      background-color: rgba(248, 81, 73, 0.15);
+      border: 1px solid rgba(248, 81, 73, 0.4);
+      color: var(--danger);
+    }
+
+    .summary-info {
+      background-color: rgba(63, 185, 80, 0.15);
+      border: 1px solid rgba(63, 185, 80, 0.4);
+      color: var(--success);
+    }
+
+    .findings-list {
+      list-style-type: none;
+      margin-bottom: 1.25rem;
+    }
+
+    .findings-list li {
+      position: relative;
+      padding-left: 1.5rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.95rem;
+    }
+
+    .findings-list li::before {
+      content: "-";
+      position: absolute;
+      left: 0.5rem;
+      color: var(--accent);
+      font-weight: bold;
+    }
+
+    .caution-note {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      border-left: 3px solid var(--warning);
+      padding-left: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .info-card {
+      background: #11151c;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1rem;
+    }
+
+    .info-card h4 {
+      font-size: 0.85rem;
+      color: #fff;
+      margin-bottom: 0.35rem;
+    }
+
+    .info-card p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    footer {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <span class="badge">Defensive Cybersecurity Tool</span>
+      <h1>Phishing URL Awareness Checker</h1>
+      <p class="subtitle">Inspects raw URL strings for visible structural warning signs. Operates entirely locally.</p>
+    </header>
+
+    <div class="card">
+      <label for="urlInput">Enter URL string to inspect:</label>
+      <div class="input-group">
+        <input type="text" id="urlInput" placeholder="e.g. http://192.0.2.10/account" autocomplete="off" />
+        <button id="checkBtn">Inspect URL</button>
+      </div>
+
+      <div class="presets">
+        <span class="presets-label">Test Samples:</span>
+        <button class="preset-btn" data-url="https://www.example.com/login">Benign URL</button>
+        <button class="preset-btn" data-url="http://192.0.2.10/account">IP + HTTP</button>
+        <button class="preset-btn" data-url="http://example.com@sample.invalid/login">@ Symbol</button>
+        <button class="preset-btn" data-url="https://a.b.c.d.e.example.invalid/path">Subdomains</button>
+        <button class="preset-btn" data-url="https://xn--example.invalid/">Punycode</button>
+      </div>
+
+      <div class="results-box" id="resultsBox">
+        <div id="summaryBanner" class="summary-banner"></div>
+        <ul id="findingsList" class="findings-list"></ul>
+        <div class="caution-note">Never enter passwords or personal data from unexpected or unverified links.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size: 1rem; margin-bottom: 0.75rem; color: #fff;">Checked Warning Signs</h3>
+      <div class="info-grid">
+        <div class="info-card">
+          <h4>@ Symbol</h4>
+          <p>Text prior to @ is ignored by browsers, disguising true landing destinations.</p>
+        </div>
+        <div class="info-card">
+          <h4>Over 100 Characters</h4>
+          <p>Unusually long URLs push the real domain out of visible browser address bars.</p>
+        </div>
+        <div class="info-card">
+          <h4>IP-Address Hostname</h4>
+          <p>Bare numerical IPs bypass legitimate domain name registration.</p>
+        </div>
+        <div class="info-card">
+          <h4>5+ Hostname Segments</h4>
+          <p>Deep subdomain hierarchies mimic legitimate multi-department organizations.</p>
+        </div>
+        <div class="info-card">
+          <h4>Punycode (xn--)</h4>
+          <p>Internationalized characters can be weaponized in homograph spoofing.</p>
+        </div>
+        <div class="info-card">
+          <h4>HTTP Scheme</h4>
+          <p>Unencrypted transmission. HTTPS provides encryption, but not proven trust.</p>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>Defensive Learning Project &bull; EWB Courses Cybersecurity Mini Project</p>
+      <p style="margin-top: 0.35rem;">Educational tool only. Does not visit websites or guarantee safety.</p>
+    </footer>
+  </div>
+
+  <script>
+    const INFO_MESSAGES = ["No URL entered", "Could not identify", "No listed warning", "This text is not a valid URL"];
+
+    function inspectUrl(rawUrl) {
+      const url = (rawUrl || '').trim();
+      const findings = [];
+
+      if (!url) {
+        return ["No URL entered."];
+      }
+
+      const candidate = url.includes("://") ? url : "http://" + url;
+
+      let parsed;
+      try {
+        parsed = new URL(candidate);
+      } catch (e) {
+        return ["This text is not a valid URL format."];
+      }
+
+      const host = (parsed.hostname || "").toLowerCase();
+      if (!host) {
+        return ["Could not identify a hostname."];
+      }
+
+      // Check 1: @ in candidate
+      if (candidate.includes("@")) {
+        findings.push("Contains an @ symbol; inspect carefully.");
+      }
+
+      // Check 2: length > 100
+      if (url.length > 100) {
+        findings.push("Unusually long URL (over 100 characters).");
+      }
+
+      // Check 3: IP address regex
+      const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/;
+      if (ipPattern.test(host)) {
+        findings.push("Uses an IP address instead of a familiar domain.");
+      }
+
+      // Check 4: Hostname segments >= 5
+      const labels = host.split(".").filter(Boolean);
+      if (labels.length >= 5) {
+        findings.push("Contains many hostname segments/subdomains.");
+      }
+
+      // Check 5: Punycode
+      if (host.includes("xn--")) {
+        findings.push("Contains a punycode-style hostname.");
+      }
+
+      // Check 6: HTTP scheme
+      if (parsed.protocol === "http:") {
+        findings.push("Uses HTTP. HTTPS alone does not prove trust.");
+      }
+
+      if (findings.length === 0) {
+        findings.push("No listed warning signs found. This does NOT prove safety.");
+      }
+
+      return findings;
+    }
+
+    function hasWarnings(findings) {
+      if (!findings || findings.length === 0) return false;
+      const first = findings[0];
+      return !INFO_MESSAGES.some(prefix => first.startsWith(prefix));
+    }
+
+    function runCheck() {
+      const input = document.getElementById("urlInput");
+      const val = input.value;
+      const findings = inspectUrl(val);
+
+      const box = document.getElementById("resultsBox");
+      const banner = document.getElementById("summaryBanner");
+      const list = document.getElementById("findingsList");
+
+      list.innerHTML = "";
+      findings.forEach(f => {
+        const li = document.createElement("li");
+        li.textContent = f;
+        list.appendChild(li);
+      });
+
+      if (hasWarnings(findings)) {
+        banner.className = "summary-banner summary-warning";
+        banner.textContent = `REVIEW CAREFULLY: ${findings.length} warning sign(s) found.`;
+      } else {
+        banner.className = "summary-banner summary-info";
+        banner.textContent = findings[0].includes("No listed warning")
+          ? "No warning signs detected. (Notice: This does NOT guarantee safety)"
+          : findings[0];
+      }
+
+      box.classList.add("active");
+    }
+
+    document.getElementById("checkBtn").addEventListener("click", runCheck);
+    document.getElementById("urlInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") runCheck();
+    });
+
+    document.querySelectorAll(".preset-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.getElementById("urlInput").value = btn.getAttribute("data-url");
+        runCheck();
+      });
+    });
+  </script>
+</body>
+</html>
+

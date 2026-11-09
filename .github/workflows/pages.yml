@@ -1,0 +1,50 @@
+name: Deploy Web Checker to GitHub Pages
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'web/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v4
+
+    - name: Setup Pages
+      id: setup_pages
+      continue-on-error: true
+      uses: actions/configure-pages@v5
+
+    - name: Check Pages status
+      if: steps.setup_pages.outcome != 'success'
+      run: |
+        echo "::warning::GitHub Pages is not yet enabled for this repository. To activate live hosting, open Settings -> Pages -> set Source to 'GitHub Actions'."
+
+    - name: Upload artifact
+      if: steps.setup_pages.outcome == 'success'
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: './web'
+
+    - name: Deploy to GitHub Pages
+      if: steps.setup_pages.outcome == 'success'
+      id: deployment
+      uses: actions/deploy-pages@v4
